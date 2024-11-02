@@ -28,14 +28,14 @@ fn read_config() -> Result<Config,Box<dyn std::error::Error>>{
     Ok(configs)
 }
 fn main() {
-    println!("Release-O2: rdclicker_reborn with version 0.4.0");
+    println!("rdclicker_reborn version 0.5.0");
     let reset: &str;
     let red: &str;
     let yellow: &str;
     let green: &str;
     let lmode:u8; // 0长按 1单击切换
     let rmode:u8;
-    
+    let allow_ansi:bool; //该变量未在程序核心部分使用
     match read_config() {
         Ok(configs) => {
             if configs.allow_ansi 
@@ -44,6 +44,7 @@ fn main() {
                 red = "\x1b[31m";
                 yellow = "\x1b[33m";
                 green = "\x1b[32m";
+                allow_ansi=true;
             } 
             else 
             {
@@ -51,6 +52,7 @@ fn main() {
                 red = "";
                 yellow = "";
                 green = "";
+                allow_ansi=false;
             }
             lmode=configs.left_mode;
             rmode=configs.right_mode;
@@ -61,6 +63,7 @@ fn main() {
             red = "\x1b[31m";
             yellow = "\x1b[33m";
             green = "\x1b[32m";
+            allow_ansi=false;
             lmode=0;
             rmode=0;
         }
@@ -69,9 +72,8 @@ fn main() {
     // 创建原子变量 ticks
     let ticks = Arc::new(AtomicU64::new(100));
 
-    // 启动一个线程处理鼠标左键点击事件
-    let lclone = Arc::clone(&ticks);
 
+    let lclone = Arc::clone(&ticks);
     let lclick=Arc::new(AtomicBool::new(false));
     let lclick_clone=Arc::clone(&lclick);
     match lmode 
@@ -127,7 +129,7 @@ fn main() {
         _=>{}
     }
 
-    // 启动另一个线程处理鼠标右键点击事件
+
     let rclone = Arc::clone(&ticks);
     let rclick=Arc::new(AtomicBool::new(false));
     
@@ -146,7 +148,6 @@ fn main() {
                     }
                 }
     
-                // 从原子变量获取 ticks 的值
                 thread::sleep(Duration::from_millis(rclone.load(Ordering::Acquire)));
             }
         });
@@ -184,28 +185,63 @@ fn main() {
         },
         _=>{}
     }
-
     // 主线程负责更新 ticks 变量
     loop 
     {
-        if unsafe { GetAsyncKeyState(18) } < 0 { // Alt
+        if unsafe { GetAsyncKeyState(191) } < 0 { // 斜杠
             let mut input = String::new();
-
-        // 使用 expect 直接处理读取输入
             std::io::stdin().read_line(&mut input).expect("读取输入失败");
-
-        // 尝试解析输入值为u64类型
-            match input.trim().parse::<u64>() {
-                Ok(new_ticks) => {
-                // 更新原子变量的值
-                    println!("{green}成功操作{reset}:更新ticks为{new_ticks}");
-                    ticks.store(new_ticks, Ordering::Release);
-                },
-                Err(e) => {
-                // 输入无效提醒用户
-                    println!("{red}错误{reset}:{}{yellow}\n通常地,输入应该是一个数字。这个错误有可能是因为无效输入导致的。\n你可以再次按下Alt并重新输入。{reset}"
-                            ,e);
-                },
+            let orders:Vec<&str>=input.split_whitespace().collect();
+            let len=orders.len();
+            match orders[0] //根指令
+            {
+                "/help"=>
+                {
+                    println!{"指令列表--/"};
+                    println!{"config [子指令]   用于在程序内部编辑某些配置"};
+                }
+                "/config"=>
+                {
+                    if len>=2 //满足1级子指令长度
+                    {
+                    match orders[1] //1级子指令
+                    {
+                        "help"=> //此处需要在每次添加config下子指令时更新
+                        {
+                            println!{"指令列表--config"};
+                            println!{"ticks [数字]    用于设置鼠标点击的间隔时间(单位:毫秒)"};
+                            println!("show    显示所有程序配置");
+                        }
+                        "ticks"=>
+                        {
+                            if len>=3 //满足2级子指令长度
+                            {
+                            match orders[2].trim().parse::<u64>() 
+                            {
+                                Ok(new_ticks) => {
+                                    println!("{green}成功操作{reset}:更新ticks为{new_ticks}");
+                                    ticks.store(new_ticks, Ordering::Release);
+                                },
+                                Err(e) => {
+                                    println!("{red}错误{reset}:{}{yellow}\n通常地,参数应该是一个数字。这个错误有可能是因为无效参数导致的。\n你可以重新输入指令。{reset}"
+                                            ,e);
+                                }
+                            }
+                            }
+                        }
+                        "show"=>
+                        {
+                            println!("配置列表:");
+                            println!("allow_ansi 是否允许ANSI转义字符={allow_ansi}");
+                            println!("ticks={}",ticks.load(Ordering::Acquire));
+                            println!("左键-线程1点击模式:{lmode}");
+                            println!("右键-线程2点击模式:{rmode}");
+                        }
+                        other=>{println!("{red}错误:{reset}未知的命令{other}")}
+                    }
+                    }
+                }
+                other=>{println!("{red}错误:{reset}未知的命令{other}")}
             }
         }
     }
