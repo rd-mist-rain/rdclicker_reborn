@@ -28,48 +28,45 @@ fn read_config() -> Result<Config,Box<dyn std::error::Error>>{
     Ok(configs)
 }
 fn main() {
-    println!("rdclicker_reborn version 0.5.0");
+    println!("rdclicker_reborn version 0.5.1");
     let reset: &str;
     let red: &str;
     let yellow: &str;
     let green: &str;
     let lmode:u8; // 0长按 1单击切换
     let rmode:u8;
-    let allow_ansi:bool; //该变量未在程序核心部分使用
+    let allow_ansi:bool; 
     match read_config() {
         Ok(configs) => {
-            if configs.allow_ansi 
-            {
-                reset = "\x1b[0m";
-                red = "\x1b[31m";
-                yellow = "\x1b[33m";
-                green = "\x1b[32m";
-                allow_ansi=true;
-            } 
-            else 
-            {
-                reset = "";
-                red = "";
-                yellow = "";
-                green = "";
-                allow_ansi=false;
-            }
+            if configs.allow_ansi { allow_ansi=true; } 
+            else { allow_ansi=false; }
             lmode=configs.left_mode;
             rmode=configs.right_mode;
         },
         Err(e) => {
             eprintln!("Failed to read configs: {}", e);
-            reset = "\x1b[0m";
-            red = "\x1b[31m";
-            yellow = "\x1b[33m";
-            green = "\x1b[32m";
             allow_ansi=false;
             lmode=0;
             rmode=0;
         }
     }
+    if allow_ansi
+    {
+        reset = "\x1b[0m";
+        red = "\x1b[31m";
+        yellow = "\x1b[33m";
+        green = "\x1b[32m";
+    }
+    else 
+    {
+        reset="";
+        red="";
+        yellow="";
+        green="";
+    }
 
-    // 创建原子变量 ticks
+
+    /*---------------核心部分--------------- */
     let ticks = Arc::new(AtomicU64::new(100));
 
 
