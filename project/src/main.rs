@@ -3,30 +3,10 @@ use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
 use windows::Win32::UI::Input::KeyboardAndMouse::{MOUSEEVENTF_LEFTDOWN, MOUSEEVENTF_LEFTUP, MOUSEEVENTF_RIGHTDOWN, MOUSEEVENTF_RIGHTUP, mouse_event, GetAsyncKeyState};
-use std::fs::File;
-use std::io::Read;
-use toml;
-use serde::Deserialize;
+mod read_config;
+mod orders;
+use orders::{RootOrders,ConfigOrders};
 
-#[derive(Deserialize)]
-struct Config
-{
-    allow_ansi:bool,
-    left_mode:u8,
-    right_mode:u8
-}
-fn read_config() -> Result<Config,Box<dyn std::error::Error>>{
-    // 打开 TOML 文件
-    let mut file = File::open("configs.toml")?;
-    
-    // 读取文件内容
-    let mut contents = String::new();
-    file.read_to_string(&mut contents)?;
-
-    // 反序列化 TOML 文件内容为 Config 结构体
-    let configs: Config = toml::from_str(&contents)?;
-    Ok(configs)
-}
 fn main() {
     println!("rdclicker_reborn version 0.5.1");
     let reset: &str;
@@ -36,7 +16,7 @@ fn main() {
     let lmode:u8; // 0长按 1单击切换
     let rmode:u8;
     let allow_ansi:bool; 
-    match read_config() {
+    match crate::read_config::read_config() {
         Ok(configs) => {
             if configs.allow_ansi { allow_ansi=true; } 
             else { allow_ansi=false; }
@@ -188,45 +168,25 @@ fn main() {
         if unsafe { GetAsyncKeyState(191) } < 0 { // 斜杠
             let mut input = String::new();
             std::io::stdin().read_line(&mut input).expect("读取输入失败");
-            let orders:Vec<&str>=input.split_whitespace().collect();
-            let len=orders.len();
-            match orders[0] //根指令
+            let orders:RootOrders=crate::orders::serve(input,(reset,red,yellow,green));
+            match orders
             {
-                "/help"=>
+                RootOrders::Help=>
                 {
                     println!{"指令列表--/"};
                     println!{"config [子指令]   用于在程序内部编辑某些配置"};
                 }
-                "/config"=>
+                RootOrders::Config(sub_orders)=>
                 {
-                    if len>=2 //满足1级子指令长度
+                    match sub_orders
                     {
-                    match orders[1] //1级子指令
-                    {
-                        "help"=> //此处需要在每次添加config下子指令时更新
+                        ConfigOrders::Help=>
                         {
                             println!{"指令列表--config"};
                             println!{"ticks [数字]    用于设置鼠标点击的间隔时间(单位:毫秒)"};
                             println!("show    显示所有程序配置");
                         }
-                        "ticks"=>
-                        {
-                            if len>=3 //满足2级子指令长度
-                            {
-                            match orders[2].trim().parse::<u64>() 
-                            {
-                                Ok(new_ticks) => {
-                                    println!("{green}成功操作{reset}:更新ticks为{new_ticks}");
-                                    ticks.store(new_ticks, Ordering::Release);
-                                },
-                                Err(e) => {
-                                    println!("{red}错误{reset}:{}{yellow}\n通常地,参数应该是一个数字。这个错误有可能是因为无效参数导致的。\n你可以重新输入指令。{reset}"
-                                            ,e);
-                                }
-                            }
-                            }
-                        }
-                        "show"=>
+                        ConfigOrders::Show=>
                         {
                             println!("配置列表:");
                             println!("allow_ansi 是否允许ANSI转义字符={allow_ansi}");
@@ -234,12 +194,18 @@ fn main() {
                             println!("左键-线程1点击模式:{lmode}");
                             println!("右键-线程2点击模式:{rmode}");
                         }
-                        other=>{println!("{red}错误:{reset}未知的命令{other}")}
-                    }
+                        ConfigOrders::Ticks(new_ticks)=>
+                        {
+                            println!("{green}成功操作{reset}:更新ticks为{new_ticks}");
+                            ticks.store(new_ticks, Ordering::Release);
+                        }
+                        ConfigOrders::Error=>{}
                     }
                 }
-                other=>{println!("{red}错误:{reset}未知的命令{other}")}
+                RootOrders::Error=>{}
+
             }
+            
         }
     }
 }
