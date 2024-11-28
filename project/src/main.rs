@@ -5,45 +5,12 @@ use std::time::Duration;
 use windows::Win32::UI::Input::KeyboardAndMouse::{MOUSEEVENTF_LEFTDOWN, MOUSEEVENTF_LEFTUP, MOUSEEVENTF_RIGHTDOWN, MOUSEEVENTF_RIGHTUP, mouse_event, GetAsyncKeyState};
 mod read_config;
 mod orders;
+mod config;
 use orders::{RootOrders,ConfigOrders};
 
 fn main() {
     println!("rdclicker_reborn version 0.6.0");
-    let reset: &str;
-    let red: &str;
-    let yellow: &str;
-    let green: &str;
-    let lmode:u8; // 0长按 1单击切换
-    let rmode:u8;
-    let allow_ansi:bool; 
-    match crate::read_config::read_config() {
-        Ok(configs) => {
-            if configs.allow_ansi { allow_ansi=true; } 
-            else { allow_ansi=false; }
-            lmode=configs.left_mode;
-            rmode=configs.right_mode;
-        },
-        Err(e) => {
-            eprintln!("Failed to read configs: {}", e);
-            allow_ansi=false;
-            lmode=0;
-            rmode=0;
-        }
-    }
-    if allow_ansi
-    {
-        reset = "\x1b[0m";
-        red = "\x1b[31m";
-        yellow = "\x1b[33m";
-        green = "\x1b[32m";
-    }
-    else 
-    {
-        reset="";
-        red="";
-        yellow="";
-        green="";
-    }
+    let ((reset,red,yellow,green),lmode,rmode,allow_ansi)=crate::config::config();
 
 
     /*---------------核心部分--------------- */
