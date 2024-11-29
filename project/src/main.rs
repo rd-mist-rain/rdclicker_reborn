@@ -2,7 +2,7 @@ use std::sync::atomic::{AtomicU64, Ordering,AtomicBool};
 use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
-use windows::Win32::UI::Input::KeyboardAndMouse::{MOUSEEVENTF_LEFTDOWN, MOUSEEVENTF_LEFTUP, MOUSEEVENTF_RIGHTDOWN, MOUSEEVENTF_RIGHTUP, mouse_event, GetAsyncKeyState};
+use windows::Win32::UI::Input::KeyboardAndMouse::{MOUSEEVENTF_LEFTDOWN, MOUSEEVENTF_LEFTUP, MOUSEEVENTF_RIGHTDOWN, MOUSEEVENTF_RIGHTUP,MOUSEEVENTF_WHEEL, mouse_event, GetAsyncKeyState};
 mod read_config;
 mod orders;
 mod config;
@@ -129,6 +129,22 @@ fn main() {
         },
         _=>{}
     }
+    thread::spawn(move||{
+        loop{
+            if unsafe{GetAsyncKeyState(38)} < 0
+            {
+                unsafe{mouse_event(MOUSEEVENTF_WHEEL,0,0,120,0);}
+            }
+        }
+    });
+    thread::spawn(move||{
+        loop{
+            if unsafe{GetAsyncKeyState(40)} < 0 
+            {
+                unsafe{mouse_event(MOUSEEVENTF_WHEEL,0,0,-120,0);}
+            }
+        }
+    });
     // 主线程负责更新 ticks 变量
     loop 
     {
