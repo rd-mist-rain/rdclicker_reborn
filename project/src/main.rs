@@ -10,7 +10,7 @@ mod config;
 use orders::{RootOrders, ConfigOrders};
 
 fn main() {
-    println!("rdclicker_reborn version 0.6.0");
+    println!("rdclicker_reborn version 0.6.1");
     let ((reset, red, yellow, green), lmode, rmode, allow_ansi) = crate::config::config();
 
     /*---------------核心部分--------------- */
@@ -32,7 +32,6 @@ fn main() {
                             mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
                         }
                     }
-
                     thread::sleep(Duration::from_millis(lclone.load(Ordering::Acquire)));
                 }
             });
@@ -49,8 +48,10 @@ fn main() {
                                 thread::sleep(Duration::from_millis(200));
                                 break;
                             }
+                            thread::sleep(Duration::from_millis(100));
                         }
                     }
+                    thread::sleep(Duration::from_millis(100));
                 }
             });
 
@@ -61,8 +62,8 @@ fn main() {
                             mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
                             mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
                         }
-                        thread::sleep(Duration::from_millis(lclone.load(Ordering::Acquire)));
                     }
+                    thread::sleep(Duration::from_millis(lclone.load(Ordering::Acquire)));
                 }
             });
         },
@@ -102,8 +103,10 @@ fn main() {
                                 thread::sleep(Duration::from_millis(200));
                                 break;
                             }
+                            thread::sleep(Duration::from_millis(100));
                         }
                     }
+                    thread::sleep(Duration::from_millis(100));
                 }
             });
 
@@ -114,8 +117,8 @@ fn main() {
                             mouse_event(MOUSEEVENTF_RIGHTDOWN, 0, 0, 0, 0);
                             mouse_event(MOUSEEVENTF_RIGHTUP, 0, 0, 0, 0);
                         }
-                        thread::sleep(Duration::from_millis(rclone.load(Ordering::Acquire)));
                     }
+                    thread::sleep(Duration::from_millis(rclone.load(Ordering::Acquire)));
                 }
             });
         },
